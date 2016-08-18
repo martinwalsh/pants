@@ -437,7 +437,8 @@ _lookup_type () {
   fi
   return 1
 }
-PANTS_REPO=""
+PANTS_REPO="git@github.com:martinwalsh/pants.git"
+PANTS_BRANCH="master"
 
 type_brew () {
   action=$1
@@ -494,4 +495,79 @@ type_brew () {
 ok brew
 ok brew bork
 ok brew git
-# ok git $PANTS_REPO ~/.pants
+type_git () {
+  action=$1
+  git_url=$2
+  shift 2
+  next=$1
+  if [ -n "$next" ] && [ ${next:0:1} != '-' ]; then
+    target_dir=$git_url
+    git_url=$1
+    shift
+  else
+    git_name=$(basename $git_url .git)
+    target_dir="$git_name"
+  fi
+  branch=$(arguments get branch $*)
+  if [[ ! -z $branch ]]; then
+    git_branch=$branch
+  else
+    git_branch="master"
+  fi
+  case $action in
+    desc)
+      echo "asserts presence and state of a git repository"
+      echo "> git git@github.com:mattly/bork"
+      echo "> git ~/code/bork git@github.com:mattly/bork"
+      echo "--ref=gh-pages                (specify branch, tag, or ref)"
+      ;;
+    status)
+      needs_exec "git" || return $STATUS_FAILED_PRECONDITION
+      bake [ ! -d $target_dir ] && return $STATUS_MISSING
+      target_dir_contents=$(str_item_count "$(bake ls -A $target_dir)")
+      [ "$target_dir_contents" -eq 0 ] && return $STATUS_MISSING
+      bake cd $target_dir
+      git_fetch="$(bake git fetch 2>&1)"
+      git_fetch_status=$?
+      if [ $git_fetch_status -gt 0 ]; then
+        echo "destination directory $target_dir exists, not a git repository (exit status $git_fetch_status)"
+        return $STATUS_CONFLICT_CLOBBER
+      elif str_matches "$git_fetch" '"^fatal"'; then
+        echo "destination directory exists, not a git repository"
+        echo "$git_fetch"
+        return $STATUS_CONFLICT_CLOBBER
+      fi
+      git_stat=$(bake git status -uno -b --porcelain)
+      git_first_line=$(echo "$git_stat" | head -n 1)
+      git_divergence=$(str_get_field "$git_first_line" 3)
+      if str_matches "$git_divergence" 'ahead'; then
+        echo "local git repository is ahead of remote"
+        return $STATUS_CONFLICT_UPGRADE
+      fi
+      if str_matches "$git_stat" "^\\s?\\w"; then
+        echo "local git repository has uncommitted changes"
+        return $STATUS_CONFLICT_UPGRADE
+      fi
+      str_matches "$(str_get_field "$git_first_line" 2)" "$git_branch"
+      if [ "$?" -ne 0 ]; then
+        echo "local git repository is on incorrect branch"
+        return $STATUS_MISMATCH_UPGRADE
+      fi
+      if str_matches "$git_divergence" 'behind'; then return $STATUS_OUTDATED; fi
+      return $STATUS_OK ;;
+    install)
+      bake mkdir -p $target_dir
+      bake git clone -b $git_branch $git_url $target_dir
+      ;;
+    upgrade)
+      bake cd $target_dir
+      bake git reset --hard
+      bake git pull
+      bake git checkout $git_branch
+      bake git log HEAD@{2}..
+      printf "\n"
+      ;;
+    *) return 1 ;;
+  esac
+}
+ok git ~/.pants $PANTS_REPO --branch=${PANTS_BRANCH}
