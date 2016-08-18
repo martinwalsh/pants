@@ -1,0 +1,11 @@
+#!/bin/bash
+# vim: ft=sh
+set -eo pipefail
+
+ACTION=${1:-status}
+
+pushd ~/.pants > /dev/null
+make $ACTION
+popd > /dev/null
+
+exit 0

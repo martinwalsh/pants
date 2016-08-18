@@ -437,9 +437,15 @@ _lookup_type () {
   fi
   return 1
 }
-PANTS_REPO="git@github.com:martinwalsh/pants.git"
-PANTS_BRANCH="master"
+PANTS_RUBY_VERSIONS=${PANTS_RUBY_VERSIONS:-2.2.2}
+PANTS_NODE_VERSIONS=${PANTS_NODE_VERSIONS:-v5.12.0}
+PANTS_PYTHON_VERSIONS=${PANTS_PYTHON_VERSIONS:=2.7.5}
 
+PANTS=${PANTS_REPO:-git@github.com:martinwalsh/pants.git}
+PANTS_BRANCH=${PANTS_BRANCH:-master}
+
+
+## BORK! BORK! BORK!
 type_brew () {
   action=$1
   name=$2
@@ -570,4 +576,175 @@ type_git () {
     *) return 1 ;;
   esac
 }
-ok git ~/.pants $PANTS_REPO --branch=${PANTS_BRANCH}
+ok git ~/.pants ${PANTS} --branch=${PANTS_BRANCH}
+type_directory () {
+  action=$1
+  dir=$2
+  shift 2
+  case "$action" in
+    desc)
+      echo "asserts presence of a directory"
+      echo "* directories ~/.ssh"
+      ;;
+    status)
+      [ ! -e "$dir" ] && return $STATUS_MISSING
+      [ -d "$dir" ] && return $STATUS_OK
+      echo "target exists as non-directory"
+      return $STATUS_CONFLICT_CLOBBER
+      ;;
+    install) bake mkdir -p $dir ;;
+    *) return 1 ;;
+  esac
+}
+ok directory ~/bin
+type_file () {
+  action=$1
+  targetfile=$2
+  sourcefile=$3
+  shift 3
+  perms=$(arguments get permissions $*)
+  owner=$(arguments get owner $*)
+  _bake () {
+    if [ -n "$owner" ]; then
+      bake sudo $*
+    else bake $*
+    fi
+  }
+  file_varname="borkfiles__$(echo "$sourcefile" | base64 | sed -E 's|\+|_|' | sed -E 's|\?|__|' | sed -E 's|=+||')"
+  case $action in
+    desc)
+      echo "asserts the presence, checksum, owner and permissions of a file"
+      echo "* file target-path source-path [arguments]"
+      echo "--permissions=755       permissions for the file"
+      echo "--owner=owner-name      owner name of the file"
+      ;;
+    status)
+      if ! is_compiled && [ ! -f $sourcefile ]; then
+        echo "source file doesn't exist: $sourcefile"
+        return $STATUS_FAILED_ARGUMENTS
+      fi
+      if [ -n "$owner" ]; then
+        owner_id=$(bake id -u $owner)
+        if [ "$?" -gt 0 ]; then
+          echo "unknown owner: $owner"
+          return $STATUS_FAILED_ARGUMENT_PRECONDITION
+        fi
+      fi
+      bake [ -f $targetfile ] || return $STATUS_MISSING
+      if is_compiled; then
+        md5c=$(md5cmd $platform)
+        sourcesum=$(echo "${!file_varname}" | base64 --decode | eval $md5c)
+      else
+        sourcesum=$(eval $(md5cmd $platform $sourcefile))
+      fi
+      targetsum=$(_bake $(md5cmd $platform $targetfile))
+      if [ "$targetsum" != $sourcesum ]; then
+        echo "expected sum: $sourcesum"
+        echo "received sum: $targetsum"
+        return $STATUS_CONFLICT_UPGRADE
+      fi
+      mismatch=
+      if [ -n "$perms" ]; then
+        existing_perms=$(_bake $(permission_cmd $platform) $targetfile)
+        if [ "$existing_perms" != $perms ]; then
+          echo "expected permissions: $perms"
+          echo "received permissions: $existing_perms"
+          mismatch=1
+        fi
+      fi
+      if [ -n "$owner" ]; then
+        existing_user=$(_bake ls -l $targetfile | awk '{print $3}')
+        if [ "$existing_user" != $owner ]; then
+          echo "expected owner: $owner"
+          echo "received owner: $existing_user"
+          mismatch=1
+        fi
+      fi
+      [ -n "$mismatch" ] && return $STATUS_MISMATCH_UPGRADE
+      return 0
+      ;;
+    install|upgrade)
+      dirn=$(dirname $targetfile)
+      [ "$dirn" != . ] && _bake mkdir -p $dirn
+      [ -n "$owner" ] && _bake chown $owner $dirn
+      if is_compiled; then
+        _bake "echo \"${!file_varname}\" | base64 --decode > $targetfile"
+      else
+        _bake cp $sourcefile $targetfile
+      fi
+      [ -n "$owner" ] && _bake chown $owner $targetfile
+      [ -n "$perms" ] && _bake chmod $perms $targetfile
+      return 0
+      ;;
+    compile)
+      if [ ! -f "$sourcefile" ]; then
+        echo "fatal: file '$sourcefile' does not exist!" 1>&2
+        exit 1
+      fi
+      if [ ! -r "$sourcefile" ]; then
+        echo "fatal: you do not have read permission for file '$sourcefile'"
+        exit 1
+      fi
+      echo "# source: $sourcefile"
+      echo "# md5 sum: $(eval $(md5cmd $platform $sourcefile))"
+      echo "$file_varname=\"$(cat $sourcefile | base64)\""
+      ;;
+    *) return 1 ;;
+  esac
+}
+# source: files/pants
+# md5 sum: 5ffd4b0c61443a441f685b005e68eb13
+borkfiles__ZmlsZXMvcGFudHMK="IyEvYmluL2Jhc2gKIyB2aW06IGZ0PXNoCnNldCAtZW8gcGlwZWZhaWwKCkFDVElPTj0kezE6LXN0YXR1c30KCnB1c2hkIH4vLnBhbnRzID4gL2Rldi9udWxsCm1ha2UgJEFDVElPTgpwb3BkID4gL2Rldi9udWxsCgpleGl0IDAK"
+ok file ~/bin/pants files/pants --permissions=755
+
+## NODE ENVIRONMENT
+ok brew nvm
+ok directory ~/.nvm
+type_fragment () {
+  ACTION=$1
+  FRAGMENT=$2
+  TARGET=$3
+  shift 3
+  case "$ACTION" in
+      desc)
+          echo 'assert a fragment of text, read from a file,'
+          echo 'can be found in another file in its entirety.'
+          echo '> ok fragment fragment/nvm.profile ~/.profile'
+          ;;
+      status)
+        IS_SUBSET=$(awk 'FNR == NR {a[$0]; next} $0 in a {delete a[$0]} END {if (length(a) == 0) {print "is_subset"}}' $FRAGMENT $TARGET)
+        if [ "Xis_subsetX" == "X${IS_SUBSET}X" ]; then
+          return $STATUS_OK
+        else
+          return $STATUS_MISSING
+        fi
+      ;;
+      install|upgrade)
+        cat $FRAGMENT >> $TARGET
+        return $STATUS_OK
+      ;;
+      *) return 1 ;;
+  esac
+}
+ok fragment fragments/nvm.profile ~/.profile
+source ~/.profile
+for PANTS_NODE_VERSION in $PANTS_NODE_VERSIONS; do
+nvm install $PANTS_NODE_VERSION
+done
+
+## RUBY ENVIRONMENT
+ok brew rbenv
+ok brew ruby-build
+ok fragment fragments/rbenv.profile ~/.profile
+source ~/.profile
+for PANTS_RUBY_VERSION in $PANTS_RUBY_VERSIONS; do
+rbenv install --skip-existing ${PANTS_RUBY_VERSION}
+done
+
+## PYTHON ENVIRONMENT
+ok brew pyenv
+ok fragment fragments/pyenv.profile ~/.profile
+source ~/.profile
+for PANTS_PYTHON_VERSION in $PANTS_PYTHON_VERSIONS; do
+pyenv install --skip-existing ${PANTS_PYTHON_VERSION}
+done
