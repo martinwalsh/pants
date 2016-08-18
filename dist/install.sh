@@ -745,6 +745,30 @@ done
 ok brew pyenv
 ok fragment fragments/pyenv.profile ~/.profile
 source ~/.profile
-for PANTS_PYTHON_VERSION in $PANTS_PYTHON_VERSIONS; do
-pyenv install --skip-existing ${PANTS_PYTHON_VERSION}
+for python_version in $PANTS_PYTHON_VERSIONS; do
+pyenv install --skip-existing $python_version
+pyenv shell $python_version
+type_pip () {
+  action=$1
+  name=$2
+  shift 2
+  case $action in
+    desc)
+      echo "asserts presence of packages installed via pip"
+      echo "> pip pygments"
+      ;;
+    status)
+      needs_exec "pip" || return $STATUS_FAILED_PRECONDITION
+      pkgs=$(bake pip list)
+      if ! str_matches "$pkgs" "^$name"; then
+        return $STATUS_MISSING
+      fi
+      return 0 ;;
+    install)
+      bake pip install "$name"
+      ;;
+  esac
+}
+ok pip ipython
 done
+pyenv shell --unset
