@@ -1,5 +1,13 @@
 TAG := master
 
+status:
+	bork status pants.sh; echo "done (exitcode: $$?)"
+.PHONY: status
+
+install:
+	bork satisfy pants.sh; echo "done (exitcode: $$?)"
+.PHONY: install
+
 build: install.sh
 .PHONY: build
 
