@@ -11,8 +11,8 @@ case "$ACTION" in
         ;;
 
     status)
-      IS_SUBSET=$(awk 'FNR == NR {a[$0]; next} $0 in a {delete a[$0]} END {if (length(a) == 0) {print "is_subset"}}' $FRAGMENT $TARGET)
-      if [ "Xis_subsetX" == "X${IS_SUBSET}X" ]; then
+      bake IS_SUBSET=$(awk 'FNR == NR {a[$0]; next} $0 in a {delete a[$0]} END {if (length(a) == 0) {print "is_subset"}}' $FRAGMENT $TARGET)
+      if [ "Xis_subsetX" == "X$(bake echo $IS_SUBSET)X" ]; then
         return $STATUS_OK
       else
         return $STATUS_MISSING
@@ -20,8 +20,8 @@ case "$ACTION" in
     ;;
 
     install|upgrade)
-      cat $FRAGMENT >> $TARGET
-      return $STATUS_OK
+      bake cat $FRAGMENT >> $TARGET
+      source $FRAGMENT
     ;;
 
     *) return 1 ;;
