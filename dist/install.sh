@@ -576,7 +576,7 @@ type_git () {
     *) return 1 ;;
   esac
 }
-ok git ~/.pants ${PANTS} --branch=${PANTS_BRANCH}
+ok git ${HOME}/.pants ${PANTS} --branch=${PANTS_BRANCH}
 type_directory () {
   action=$1
   dir=$2
@@ -596,7 +596,7 @@ type_directory () {
     *) return 1 ;;
   esac
 }
-ok directory ~/bin
+ok directory ${HOME}/bin
 type_file () {
   action=$1
   targetfile=$2
@@ -695,11 +695,12 @@ type_file () {
 # source: files/pants
 # md5 sum: 5ffd4b0c61443a441f685b005e68eb13
 borkfiles__ZmlsZXMvcGFudHMK="IyEvYmluL2Jhc2gKIyB2aW06IGZ0PXNoCnNldCAtZW8gcGlwZWZhaWwKCkFDVElPTj0kezE6LXN0YXR1c30KCnB1c2hkIH4vLnBhbnRzID4gL2Rldi9udWxsCm1ha2UgJEFDVElPTgpwb3BkID4gL2Rldi9udWxsCgpleGl0IDAK"
-ok file ~/bin/pants files/pants --permissions=755
+ok file ${HOME}/bin/pants files/pants --permissions=755
 
 ## NODE ENVIRONMENT
 ok brew nvm
-ok directory ~/.nvm
+if did_update; then
+ok directory ${HOME}/.nvm
 type_fragment () {
   ACTION=$1
   FRAGMENT=$2
@@ -712,39 +713,45 @@ type_fragment () {
           echo '> ok fragment fragment/nvm.profile ~/.profile'
           ;;
       status)
-        IS_SUBSET=$(awk 'FNR == NR {a[$0]; next} $0 in a {delete a[$0]} END {if (length(a) == 0) {print "is_subset"}}' $FRAGMENT $TARGET)
-        if [ "Xis_subsetX" == "X${IS_SUBSET}X" ]; then
+        bake IS_SUBSET=$(awk 'FNR == NR {a[$0]; next} $0 in a {delete a[$0]} END {if (length(a) == 0) {print "is_subset"}}' $FRAGMENT $TARGET)
+        if [ "Xis_subsetX" == "X$(bake echo $IS_SUBSET)X" ]; then
           return $STATUS_OK
         else
           return $STATUS_MISSING
         fi
       ;;
       install|upgrade)
-        cat $FRAGMENT >> $TARGET
-        return $STATUS_OK
+        bake cat $FRAGMENT >> $TARGET
+        source $FRAGMENT
       ;;
       *) return 1 ;;
   esac
 }
-ok fragment fragments/nvm.profile ~/.profile
-source ~/.profile
+ok fragment fragments/nvm.profile ${HOME}/.profile
+source fragments/nvm.profilE
 for PANTS_NODE_VERSION in $PANTS_NODE_VERSIONS; do
 nvm install $PANTS_NODE_VERSION
 done
+fi
 
 ## RUBY ENVIRONMENT
 ok brew rbenv
+if did_update; then
 ok brew ruby-build
-ok fragment fragments/rbenv.profile ~/.profile
-source ~/.profile
+if did_update; then
+ok fragment fragments/rbenv.profile ${HOME}/.profile
+source fragments/rbenv.profile
 for PANTS_RUBY_VERSION in $PANTS_RUBY_VERSIONS; do
 rbenv install --skip-existing ${PANTS_RUBY_VERSION}
 done
+fi
+fi
 
 ## PYTHON ENVIRONMENT
 ok brew pyenv
-ok fragment fragments/pyenv.profile ~/.profile
-source ~/.profile
+if did_update; then
+ok fragment fragments/pyenv.profile ${HOME}/.profile
+source fragments/pyenv.profile
 for python_version in $PANTS_PYTHON_VERSIONS; do
 pyenv install --skip-existing $python_version
 pyenv shell $python_version
@@ -772,3 +779,4 @@ type_pip () {
 ok pip ipython
 done
 pyenv shell --unset
+fi
