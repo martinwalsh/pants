@@ -1,0 +1,17 @@
+#!/bin/bash
+PANTS_RUBY_VERSIONS=${PANTS_RUBY_VERSIONS:-2.2.2 2.3.1}
+
+ok brew rbenv  # ruby-build is installed with rbenv?
+if did_update; then
+  PROFILE="${HOME}/.pants/profile/rbenv.profile"
+  if ! grep -Fqs "source $PROFILE" ${HOME}/.profile; then
+    echo "source $PROFILE" >> ${HOME}/.profile
+  fi
+
+  source $PROFILE
+  for PANTS_RUBY_VERSION in $PANTS_RUBY_VERSIONS; do
+    rbenv install --skip-existing $PANTS_RUBY_VERSION
+  done
+fi
+
+# vim: set ft=sh

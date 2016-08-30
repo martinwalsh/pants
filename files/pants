@@ -2,10 +2,19 @@
 # vim: ft=sh
 set -eo pipefail
 
-ACTION=${1:-status}
+CONFIG="${HOME}/.pants/config"
 
-pushd ~/.pants > /dev/null
-make $ACTION
-popd > /dev/null
+case ${1:-status} in
+  install|statisfy|update|upgrade)
+    bork satisfy $CONFIG
+    ;;
+  check|status)
+    bork status $CONFIG
+    ;;
+  *)
+    echo "Usage: $0 [install|status]"
+    exit 1
+    ;;
+esac
 
 exit 0

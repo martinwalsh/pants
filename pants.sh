@@ -1,50 +1,25 @@
-PANTS_RUBY_VERSIONS=${PANTS_RUBY_VERSIONS:-2.2.2 2.3.1}
-PANTS_NODE_VERSIONS=${PANTS_NODE_VERSIONS:-v5.12.0 v6.5.0}
-PANTS_PYTHON_VERSIONS=${PANTS_PYTHON_VERSIONS:=2.7.5}
-
-PANTS=${PANTS_REPO:-git@github.com:martinwalsh/pants.git}
-PANTS_BRANCH=${PANTS_BRANCH:-master}
-
-register 'types/fragment.sh'
+PANTSDIR="${HOME}/.pants"
 
 ## BORK! BORK! BORK!
 ok brew
 ok brew bork
-ok brew git
-ok git ${HOME}/.pants ${PANTS} --branch=${PANTS_BRANCH}
+
+# The user-specific opt-in bork config file
+ok directory $PANTSDIR
+ok file ${PANTSDIR}/config files/config --permissions=755
+
+## Files to be sourced
+ok directory ${PANTSDIR}/profile
+ok file ${PANTSDIR}/profile/nvm.profile files/profile/nvm.profile
+ok file ${PANTSDIR}/profile/rbenv.profile files/profile/rbenv.profile
+ok file ${PANTSDIR}/profile/pyenv.profile files/profile/pyenv.profile
+
+## Complex bork recipes
+ok directory ${PANTSDIR}/includes
+ok file ${PANTSDIR}/includes/nvm files/includes/nvm
+ok file ${PANTSDIR}/includes/rbenv files/includes/rbenv
+ok file ${PANTSDIR}/includes/pyenv files/includes/pyenv
+
+## A helper executable script for later updates
 ok directory ${HOME}/bin
 ok file ${HOME}/bin/pants files/pants --permissions=755
-
-## NODE ENVIRONMENT
-ok brew nvm
-if did_update; then
-  ok directory ${HOME}/.nvm
-  ok fragment fragments/nvm.profile ${HOME}/.profile
-  source fragments/nvm.profilE
-  for PANTS_NODE_VERSION in $PANTS_NODE_VERSIONS; do
-    nvm install $PANTS_NODE_VERSION
-  done
-fi
-
-## RUBY ENVIRONMENT
-ok brew rbenv  # ruby-build is installed with rbenv
-if did_update; then
-  ok fragment fragments/rbenv.profile ${HOME}/.profile
-  source fragments/rbenv.profile
-  for PANTS_RUBY_VERSION in $PANTS_RUBY_VERSIONS; do
-    rbenv install --skip-existing ${PANTS_RUBY_VERSION}
-  done
-fi
-
-## PYTHON ENVIRONMENT
-ok brew pyenv
-if did_update; then
-  ok fragment fragments/pyenv.profile ${HOME}/.profile
-  source fragments/pyenv.profile
-  for python_version in $PANTS_PYTHON_VERSIONS; do
-    pyenv install --skip-existing $python_version
-    pyenv shell $python_version
-    ok pip ipython
-  done
-  pyenv shell --unset
-fi

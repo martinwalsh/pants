@@ -1,0 +1,51 @@
+## You need these apps
+ok brew git
+ok brew awscli
+ok brew gnu-tar
+ok brew tree
+ok brew packer
+ok brew terraform
+
+ok cask docker-toolbox  # includes virtualbox, docker, docker-machine, etc.
+ok cask vagrant
+
+## Someday these may be required, uncomment to install today.
+# ok cask java
+# ok cask apache-directory-studio
+
+## You'll probably want these apps, uncomment to install.
+# ok brew vim
+# ok brew p7zip
+# ok brew nmap
+# ok brew bash-completion
+# ok brew bash-git-prompt
+# ok brew gnupg
+# ok brew gpg-agent
+# ok brew sqlite
+# ok brew watch
+# ok brew gawk
+# ok brew gnu-sed
+# ok brew htop
+# ok brew jq
+
+## More apps you may want, uncomment to install.
+# ok cask google-chrome
+# ok cask atom
+# ok cask iterm2
+# ok cask dropbox
+# ok cask 1password
+
+## Manage AppStore apps with homebrew
+# ok mas
+# ok mas <appstore id> 1password
+
+## Node, Python or Ruby virtual environment, version managers
+
+# PANTS_NODE_VERSIONS="v5.12.0 v6.5.0"
+# include includes/nvm
+
+PANTS_RUBY_VERSIONS="2.2.2"
+include includes/rbenv
+
+# PANTS_PYTHON_VERSIONS="2.7.5"
+# include includes/pyenv

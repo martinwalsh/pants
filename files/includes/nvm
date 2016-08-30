@@ -1,0 +1,19 @@
+#!/bin/bash
+PANTS_NODE_VERSIONS=${PANTS_NODE_VERSIONS:-v5.12.0 v6.5.0}
+
+ok brew nvm
+if did_update; then
+  ok directory ${HOME}/.nvm
+
+  PROFILE="${HOME}/.pants/profile/nvm.profile"
+  if ! grep -Fqs "source $PROFILE" ${HOME}/.profile; then
+    echo "source $PROFILE" >> ${HOME}/.profile
+  fi
+
+  source $PROFILE
+  for PANTS_NODE_VERSION in $PANTS_NODE_VERSIONS; do
+    nvm install $PANTS_NODE_VERSION
+  done
+fi
+
+# vim: set ft=sh

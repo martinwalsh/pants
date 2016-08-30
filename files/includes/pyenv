@@ -1,0 +1,19 @@
+#!/bin/bash
+PANTS_PYTHON_VERSIONS=${PANTS_PYTHON_VERSIONS:-2.7.5}
+
+ok brew nvm
+if did_update; then
+  ok directory ${HOME}/.nvm
+
+  PROFILE="${HOME}/.pants/profile/nvm.profile"
+  if ! grep -Fqs "source $PROFILE" ${HOME}/.profile; then
+    echo "source $PROFILE" >> ${HOME}/.profile
+  fi
+
+  source $PROFILE
+  for PANTS_PYTHON_VERSION in $PANTS_PYTHON_VERSIONS; do
+    nvm install $PANTS_PYTHON_VERSION
+  done
+fi
+
+# vim: set ft=sh

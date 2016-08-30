@@ -437,13 +437,7 @@ _lookup_type () {
   fi
   return 1
 }
-PANTS_RUBY_VERSIONS=${PANTS_RUBY_VERSIONS:-2.2.2}
-PANTS_NODE_VERSIONS=${PANTS_NODE_VERSIONS:-v5.12.0}
-PANTS_PYTHON_VERSIONS=${PANTS_PYTHON_VERSIONS:=2.7.5}
-
-PANTS=${PANTS_REPO:-git@github.com:martinwalsh/pants.git}
-PANTS_BRANCH=${PANTS_BRANCH:-master}
-
+PANTSDIR="${HOME}/.pants"
 
 ## BORK! BORK! BORK!
 type_brew () {
@@ -500,83 +494,8 @@ type_brew () {
 }
 ok brew
 ok brew bork
-ok brew git
-type_git () {
-  action=$1
-  git_url=$2
-  shift 2
-  next=$1
-  if [ -n "$next" ] && [ ${next:0:1} != '-' ]; then
-    target_dir=$git_url
-    git_url=$1
-    shift
-  else
-    git_name=$(basename $git_url .git)
-    target_dir="$git_name"
-  fi
-  branch=$(arguments get branch $*)
-  if [[ ! -z $branch ]]; then
-    git_branch=$branch
-  else
-    git_branch="master"
-  fi
-  case $action in
-    desc)
-      echo "asserts presence and state of a git repository"
-      echo "> git git@github.com:mattly/bork"
-      echo "> git ~/code/bork git@github.com:mattly/bork"
-      echo "--ref=gh-pages                (specify branch, tag, or ref)"
-      ;;
-    status)
-      needs_exec "git" || return $STATUS_FAILED_PRECONDITION
-      bake [ ! -d $target_dir ] && return $STATUS_MISSING
-      target_dir_contents=$(str_item_count "$(bake ls -A $target_dir)")
-      [ "$target_dir_contents" -eq 0 ] && return $STATUS_MISSING
-      bake cd $target_dir
-      git_fetch="$(bake git fetch 2>&1)"
-      git_fetch_status=$?
-      if [ $git_fetch_status -gt 0 ]; then
-        echo "destination directory $target_dir exists, not a git repository (exit status $git_fetch_status)"
-        return $STATUS_CONFLICT_CLOBBER
-      elif str_matches "$git_fetch" '"^fatal"'; then
-        echo "destination directory exists, not a git repository"
-        echo "$git_fetch"
-        return $STATUS_CONFLICT_CLOBBER
-      fi
-      git_stat=$(bake git status -uno -b --porcelain)
-      git_first_line=$(echo "$git_stat" | head -n 1)
-      git_divergence=$(str_get_field "$git_first_line" 3)
-      if str_matches "$git_divergence" 'ahead'; then
-        echo "local git repository is ahead of remote"
-        return $STATUS_CONFLICT_UPGRADE
-      fi
-      if str_matches "$git_stat" "^\\s?\\w"; then
-        echo "local git repository has uncommitted changes"
-        return $STATUS_CONFLICT_UPGRADE
-      fi
-      str_matches "$(str_get_field "$git_first_line" 2)" "$git_branch"
-      if [ "$?" -ne 0 ]; then
-        echo "local git repository is on incorrect branch"
-        return $STATUS_MISMATCH_UPGRADE
-      fi
-      if str_matches "$git_divergence" 'behind'; then return $STATUS_OUTDATED; fi
-      return $STATUS_OK ;;
-    install)
-      bake mkdir -p $target_dir
-      bake git clone -b $git_branch $git_url $target_dir
-      ;;
-    upgrade)
-      bake cd $target_dir
-      bake git reset --hard
-      bake git pull
-      bake git checkout $git_branch
-      bake git log HEAD@{2}..
-      printf "\n"
-      ;;
-    *) return 1 ;;
-  esac
-}
-ok git ${HOME}/.pants ${PANTS} --branch=${PANTS_BRANCH}
+
+# The user-specific opt-in bork config file
 type_directory () {
   action=$1
   dir=$2
@@ -596,7 +515,7 @@ type_directory () {
     *) return 1 ;;
   esac
 }
-ok directory ${HOME}/bin
+ok directory $PANTSDIR
 type_file () {
   action=$1
   targetfile=$2
@@ -692,91 +611,44 @@ type_file () {
     *) return 1 ;;
   esac
 }
+# source: files/config
+# md5 sum: 5f8d157d5614996452c825bfa37c9959
+borkfiles__ZmlsZXMvY29uZmlnCg="IyMgWW91IG5lZWQgdGhlc2UgYXBwcwpvayBicmV3IGdpdApvayBicmV3IGF3c2NsaQpvayBicmV3IGdudS10YXIKb2sgYnJldyB0cmVlCm9rIGJyZXcgcGFja2VyCm9rIGJyZXcgdGVycmFmb3JtCgpvayBjYXNrIGRvY2tlci10b29sYm94ICAjIGluY2x1ZGVzIHZpcnR1YWxib3gsIGRvY2tlciwgZG9ja2VyLW1hY2hpbmUsIGV0Yy4Kb2sgY2FzayB2YWdyYW50CgojIyBTb21lZGF5IHRoZXNlIG1heSBiZSByZXF1aXJlZCwgdW5jb21tZW50IHRvIGluc3RhbGwgdG9kYXkuCiMgb2sgY2FzayBqYXZhCiMgb2sgY2FzayBhcGFjaGUtZGlyZWN0b3J5LXN0dWRpbwoKIyMgWW91J2xsIHByb2JhYmx5IHdhbnQgdGhlc2UgYXBwcywgdW5jb21tZW50IHRvIGluc3RhbGwuCiMgb2sgYnJldyB2aW0KIyBvayBicmV3IHA3emlwCiMgb2sgYnJldyBubWFwCiMgb2sgYnJldyBiYXNoLWNvbXBsZXRpb24KIyBvayBicmV3IGJhc2gtZ2l0LXByb21wdAojIG9rIGJyZXcgZ251cGcKIyBvayBicmV3IGdwZy1hZ2VudAojIG9rIGJyZXcgc3FsaXRlCiMgb2sgYnJldyB3YXRjaAojIG9rIGJyZXcgZ2F3awojIG9rIGJyZXcgZ251LXNlZAojIG9rIGJyZXcgaHRvcAojIG9rIGJyZXcganEKCiMjIE1vcmUgYXBwcyB5b3UgbWF5IHdhbnQsIHVuY29tbWVudCB0byBpbnN0YWxsLgojIG9rIGNhc2sgZ29vZ2xlLWNocm9tZQojIG9rIGNhc2sgYXRvbQojIG9rIGNhc2sgaXRlcm0yCiMgb2sgY2FzayBkcm9wYm94CiMgb2sgY2FzayAxcGFzc3dvcmQKCiMjIE1hbmFnZSBBcHBTdG9yZSBhcHBzIHdpdGggaG9tZWJyZXcKIyBvayBtYXMKIyBvayBtYXMgPGFwcHN0b3JlIGlkPiAxcGFzc3dvcmQKCiMjIE5vZGUsIFB5dGhvbiBvciBSdWJ5IHZpcnR1YWwgZW52aXJvbm1lbnQsIHZlcnNpb24gbWFuYWdlcnMKCiMgUEFOVFNfTk9ERV9WRVJTSU9OUz0idjUuMTIuMCB2Ni41LjAiCiMgaW5jbHVkZSBpbmNsdWRlcy9udm0KClBBTlRTX1JVQllfVkVSU0lPTlM9IjIuMi4yIgppbmNsdWRlIGluY2x1ZGVzL3JiZW52CgojIFBBTlRTX1BZVEhPTl9WRVJTSU9OUz0iMi43LjUiCiMgaW5jbHVkZSBpbmNsdWRlcy9weWVudgo="
+ok file ${PANTSDIR}/config files/config --permissions=755
+
+## Files to be sourced
+ok directory ${PANTSDIR}/profile
+# source: files/profile/nvm.profile
+# md5 sum: aa8b0a9b8030364e3ad469dc9d92b0a9
+borkfiles__ZmlsZXMvcHJvZmlsZS9udm0ucHJvZmlsZQo="ZXhwb3J0IE5WTV9ESVI9IiRIT01FLy5udm0iCi4gIiQoYnJldyAtLXByZWZpeCBudm0pL252bS5zaCIK"
+ok file ${PANTSDIR}/profile/nvm.profile files/profile/nvm.profile
+# source: files/profile/rbenv.profile
+# md5 sum: 2706a852806175b3f84e8ec721103d58
+borkfiles__ZmlsZXMvcHJvZmlsZS9yYmVudi5wcm9maWxlCg="aWYgd2hpY2ggcmJlbnYgPiAvZGV2L251bGw7IHRoZW4gZXZhbCAiJChyYmVudiBpbml0IC0pIjsgZmkK"
+ok file ${PANTSDIR}/profile/rbenv.profile files/profile/rbenv.profile
+# source: files/profile/pyenv.profile
+# md5 sum: 8f19aea13b19d1509f44f8b5e743e269
+borkfiles__ZmlsZXMvcHJvZmlsZS9weWVudi5wcm9maWxlCg="aWYgd2hpY2ggcHllbnYgPiAvZGV2L251bGw7IHRoZW4gZXZhbCAiJChweWVudiBpbml0IC0pIjsgZmkK"
+ok file ${PANTSDIR}/profile/pyenv.profile files/profile/pyenv.profile
+
+## Complex bork recipes
+ok directory ${PANTSDIR}/includes
+# source: files/includes/nvm
+# md5 sum: a2a7864eb0865e116e814c7d99040c98
+borkfiles__ZmlsZXMvaW5jbHVkZXMvbnZtCg="IyEvYmluL2Jhc2gKUEFOVFNfTk9ERV9WRVJTSU9OUz0ke1BBTlRTX05PREVfVkVSU0lPTlM6LXY1LjEyLjAgdjYuNS4wfQoKb2sgYnJldyBudm0KaWYgZGlkX3VwZGF0ZTsgdGhlbgogIG9rIGRpcmVjdG9yeSAke0hPTUV9Ly5udm0KCiAgUFJPRklMRT0iJHtIT01FfS8ucGFudHMvcHJvZmlsZS9udm0ucHJvZmlsZSIKICBpZiAhIGdyZXAgLUZxcyAic291cmNlICRQUk9GSUxFIiAke0hPTUV9Ly5wcm9maWxlOyB0aGVuCiAgICBlY2hvICJzb3VyY2UgJFBST0ZJTEUiID4+ICR7SE9NRX0vLnByb2ZpbGUKICBmaQoKICBzb3VyY2UgJFBST0ZJTEUKICBmb3IgUEFOVFNfTk9ERV9WRVJTSU9OIGluICRQQU5UU19OT0RFX1ZFUlNJT05TOyBkbwogICAgbnZtIGluc3RhbGwgJFBBTlRTX05PREVfVkVSU0lPTgogIGRvbmUKZmkKCiMgdmltOiBzZXQgZnQ9c2gK"
+ok file ${PANTSDIR}/includes/nvm files/includes/nvm
+# source: files/includes/rbenv
+# md5 sum: 750bfb1713952401ce7966b169a009b6
+borkfiles__ZmlsZXMvaW5jbHVkZXMvcmJlbnYK="IyEvYmluL2Jhc2gKUEFOVFNfUlVCWV9WRVJTSU9OUz0ke1BBTlRTX1JVQllfVkVSU0lPTlM6LTIuMi4yIDIuMy4xfQoKb2sgYnJldyByYmVudiAgIyBydWJ5LWJ1aWxkIGlzIGluc3RhbGxlZCB3aXRoIHJiZW52PwppZiBkaWRfdXBkYXRlOyB0aGVuCiAgUFJPRklMRT0iJHtIT01FfS8ucGFudHMvcHJvZmlsZS9yYmVudi5wcm9maWxlIgogIGlmICEgZ3JlcCAtRnFzICJzb3VyY2UgJFBST0ZJTEUiICR7SE9NRX0vLnByb2ZpbGU7IHRoZW4KICAgIGVjaG8gInNvdXJjZSAkUFJPRklMRSIgPj4gJHtIT01FfS8ucHJvZmlsZQogIGZpCgogIHNvdXJjZSAkUFJPRklMRQogIGZvciBQQU5UU19SVUJZX1ZFUlNJT04gaW4gJFBBTlRTX1JVQllfVkVSU0lPTlM7IGRvCiAgICByYmVudiBpbnN0YWxsIC0tc2tpcC1leGlzdGluZyAkUEFOVFNfUlVCWV9WRVJTSU9OCiAgZG9uZQpmaQoKIyB2aW06IHNldCBmdD1zaAo="
+ok file ${PANTSDIR}/includes/rbenv files/includes/rbenv
+# source: files/includes/pyenv
+# md5 sum: 0319b7c5760c336e32fe2fa00dc2ba93
+borkfiles__ZmlsZXMvaW5jbHVkZXMvcHllbnYK="IyEvYmluL2Jhc2gKUEFOVFNfUFlUSE9OX1ZFUlNJT05TPSR7UEFOVFNfUFlUSE9OX1ZFUlNJT05TOi0yLjcuNX0KCm9rIGJyZXcgbnZtCmlmIGRpZF91cGRhdGU7IHRoZW4KICBvayBkaXJlY3RvcnkgJHtIT01FfS8ubnZtCgogIFBST0ZJTEU9IiR7SE9NRX0vLnBhbnRzL3Byb2ZpbGUvbnZtLnByb2ZpbGUiCiAgaWYgISBncmVwIC1GcXMgInNvdXJjZSAkUFJPRklMRSIgJHtIT01FfS8ucHJvZmlsZTsgdGhlbgogICAgZWNobyAic291cmNlICRQUk9GSUxFIiA+PiAke0hPTUV9Ly5wcm9maWxlCiAgZmkKCiAgc291cmNlICRQUk9GSUxFCiAgZm9yIFBBTlRTX1BZVEhPTl9WRVJTSU9OIGluICRQQU5UU19QWVRIT05fVkVSU0lPTlM7IGRvCiAgICBudm0gaW5zdGFsbCAkUEFOVFNfUFlUSE9OX1ZFUlNJT04KICBkb25lCmZpCgojIHZpbTogc2V0IGZ0PXNoCg=="
+ok file ${PANTSDIR}/includes/pyenv files/includes/pyenv
+
+## A helper executable script for later updates
+ok directory ${HOME}/bin
 # source: files/pants
-# md5 sum: 5ffd4b0c61443a441f685b005e68eb13
-borkfiles__ZmlsZXMvcGFudHMK="IyEvYmluL2Jhc2gKIyB2aW06IGZ0PXNoCnNldCAtZW8gcGlwZWZhaWwKCkFDVElPTj0kezE6LXN0YXR1c30KCnB1c2hkIH4vLnBhbnRzID4gL2Rldi9udWxsCm1ha2UgJEFDVElPTgpwb3BkID4gL2Rldi9udWxsCgpleGl0IDAK"
+# md5 sum: 09c7d02cccaafb5070b0c1ed1b479922
+borkfiles__ZmlsZXMvcGFudHMK="IyEvYmluL2Jhc2gKIyB2aW06IGZ0PXNoCnNldCAtZW8gcGlwZWZhaWwKCkNPTkZJRz0iJHtIT01FfS8ucGFudHMvY29uZmlnIgoKY2FzZSAkezE6LXN0YXR1c30gaW4KICBpbnN0YWxsfHN0YXRpc2Z5fHVwZGF0ZXx1cGdyYWRlKQogICAgYm9yayBzYXRpc2Z5ICRDT05GSUcKICAgIDs7CiAgY2hlY2t8c3RhdHVzKQogICAgYm9yayBzdGF0dXMgJENPTkZJRwogICAgOzsKICAqKQogICAgZWNobyAiVXNhZ2U6ICQwIFtpbnN0YWxsfHN0YXR1c10iCiAgICBleGl0IDEKICAgIDs7CmVzYWMKCmV4aXQgMAo="
 ok file ${HOME}/bin/pants files/pants --permissions=755
-
-## NODE ENVIRONMENT
-ok brew nvm
-if did_update; then
-ok directory ${HOME}/.nvm
-type_fragment () {
-  ACTION=$1
-  FRAGMENT=$2
-  TARGET=$3
-  shift 3
-  case "$ACTION" in
-      desc)
-          echo 'assert a fragment of text, read from a file,'
-          echo 'can be found in another file in its entirety.'
-          echo '> ok fragment fragment/nvm.profile ~/.profile'
-          ;;
-      status)
-        bake IS_SUBSET=$(awk 'FNR == NR {a[$0]; next} $0 in a {delete a[$0]} END {if (length(a) == 0) {print "is_subset"}}' $FRAGMENT $TARGET)
-        if [ "Xis_subsetX" == "X$(bake echo $IS_SUBSET)X" ]; then
-          return $STATUS_OK
-        else
-          return $STATUS_MISSING
-        fi
-      ;;
-      install|upgrade)
-        bake cat $FRAGMENT >> $TARGET
-        source $FRAGMENT
-      ;;
-      *) return 1 ;;
-  esac
-}
-ok fragment fragments/nvm.profile ${HOME}/.profile
-source fragments/nvm.profilE
-for PANTS_NODE_VERSION in $PANTS_NODE_VERSIONS; do
-nvm install $PANTS_NODE_VERSION
-done
-fi
-
-## RUBY ENVIRONMENT
-ok brew rbenv
-if did_update; then
-ok brew ruby-build
-if did_update; then
-ok fragment fragments/rbenv.profile ${HOME}/.profile
-source fragments/rbenv.profile
-for PANTS_RUBY_VERSION in $PANTS_RUBY_VERSIONS; do
-rbenv install --skip-existing ${PANTS_RUBY_VERSION}
-done
-fi
-fi
-
-## PYTHON ENVIRONMENT
-ok brew pyenv
-if did_update; then
-ok fragment fragments/pyenv.profile ${HOME}/.profile
-source fragments/pyenv.profile
-for python_version in $PANTS_PYTHON_VERSIONS; do
-pyenv install --skip-existing $python_version
-pyenv shell $python_version
-type_pip () {
-  action=$1
-  name=$2
-  shift 2
-  case $action in
-    desc)
-      echo "asserts presence of packages installed via pip"
-      echo "> pip pygments"
-      ;;
-    status)
-      needs_exec "pip" || return $STATUS_FAILED_PRECONDITION
-      pkgs=$(bake pip list)
-      if ! str_matches "$pkgs" "^$name"; then
-        return $STATUS_MISSING
-      fi
-      return 0 ;;
-    install)
-      bake pip install "$name"
-      ;;
-  esac
-}
-ok pip ipython
-done
-pyenv shell --unset
-fi
