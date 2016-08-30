@@ -1,5 +1,5 @@
-PANTS_RUBY_VERSIONS=${PANTS_RUBY_VERSIONS:-2.2.2}
-PANTS_NODE_VERSIONS=${PANTS_NODE_VERSIONS:-v5.12.0}
+PANTS_RUBY_VERSIONS=${PANTS_RUBY_VERSIONS:-2.2.2 2.3.1}
+PANTS_NODE_VERSIONS=${PANTS_NODE_VERSIONS:-v5.12.0 v6.5.0}
 PANTS_PYTHON_VERSIONS=${PANTS_PYTHON_VERSIONS:=2.7.5}
 
 PANTS=${PANTS_REPO:-git@github.com:martinwalsh/pants.git}
@@ -27,16 +27,13 @@ if did_update; then
 fi
 
 ## RUBY ENVIRONMENT
-ok brew rbenv
+ok brew rbenv  # ruby-build is installed with rbenv
 if did_update; then
-  ok brew ruby-build
-  if did_update; then
-    ok fragment fragments/rbenv.profile ${HOME}/.profile
-    source fragments/rbenv.profile
-    for PANTS_RUBY_VERSION in $PANTS_RUBY_VERSIONS; do
-      rbenv install --skip-existing ${PANTS_RUBY_VERSION}
-    done
-  fi
+  ok fragment fragments/rbenv.profile ${HOME}/.profile
+  source fragments/rbenv.profile
+  for PANTS_RUBY_VERSION in $PANTS_RUBY_VERSIONS; do
+    rbenv install --skip-existing ${PANTS_RUBY_VERSION}
+  done
 fi
 
 ## PYTHON ENVIRONMENT
