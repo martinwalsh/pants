@@ -1,19 +1,10 @@
-## You need these apps
-ok brew git
-ok brew awscli
-ok brew gnu-tar
-ok brew tree
-ok brew packer
-ok brew terraform
-
-ok cask docker-toolbox  # includes virtualbox, docker, docker-machine, etc.
-ok cask vagrant
-
-## Someday these may be required, uncomment to install today.
-# ok cask java
-# ok cask apache-directory-studio
-
-## You'll probably want these apps, uncomment to install.
+# Install with homebrew
+# ok brew git
+# ok brew awscli
+# ok brew gnu-tar
+# ok brew tree
+# ok brew packer
+# ok brew terraform
 # ok brew vim
 # ok brew p7zip
 # ok brew nmap
@@ -28,7 +19,13 @@ ok cask vagrant
 # ok brew htop
 # ok brew jq
 
-## More apps you may want, uncomment to install.
+# Install with homebrew cask
+# ok cask docker-toolbox  # includes virtualbox, docker, docker-machine, etc.
+# ok cask vagrant
+
+# ok cask java
+# ok cask apache-directory-studio
+
 # ok cask google-chrome
 # ok cask atom
 # ok cask iterm2
@@ -44,8 +41,8 @@ ok cask vagrant
 # PANTS_NODE_VERSIONS="v5.12.0 v6.5.0"
 # include includes/nvm
 
-PANTS_RUBY_VERSIONS="2.2.2"
-include includes/rbenv
+# PANTS_RUBY_VERSIONS="2.2.2"
+# include includes/rbenv
 
 # PANTS_PYTHON_VERSIONS="2.7.5"
 # include includes/pyenv
