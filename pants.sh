@@ -1,4 +1,4 @@
-PANTSDIR="${HOME}/.pants"
+PANTSDIR="${PANTSDIR:=${HOME}/.pants}"
 
 ## BORK! BORK! BORK!
 ok brew
@@ -7,6 +7,11 @@ ok brew bork
 # The user-specific opt-in bork config file
 ok directory $PANTSDIR
 ok file ${PANTSDIR}/config files/config --permissions=755
+
+# Include custom bork types
+ok directory ${PANTSDIR}/types
+ok file ${PANTSDIR}/types/lineinfile.sh types/lineinfile.sh
+ok file ${PANTSDIR}/types/fragment.sh types/fragment.sh
 
 ## Files to be sourced
 ok directory ${PANTSDIR}/profile
